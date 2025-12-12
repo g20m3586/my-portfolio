@@ -1,124 +1,48 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Menu, X } from 'lucide-react';
+import { Canvas, useFrame } from '@react-three/fiber';
+import { OrbitControls, Sphere, MeshDistortMaterial } from '@react-three/drei';
+
+// 3D Animated Sphere
+const AnimatedSphere = () => {
+  const meshRef = useRef();
+  
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime();
+    meshRef.current.rotation.x = t * 0.2;
+    meshRef.current.rotation.y = t * 0.3;
+  });
+
+  return (
+    <Sphere ref={meshRef} args={[1, 100, 200]} scale={2.5}>
+      <MeshDistortMaterial
+        color="#4a5568"
+        attach="material"
+        distort={0.4}
+        speed={2}
+        roughness={0.2}
+      />
+    </Sphere>
+  );
+};
 
 const WelcomePage = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    let animationFrameId: number;
-    let time = 0;
-
-    const resize = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    resize();
-    window.addEventListener('resize', resize);
-
-    const particles: { x: number; y: number; radius: number; vx: number; vy: number; opacity: number; }[] = [];
-    const particleCount = 100;
-
-    for (let i = 0; i < particleCount; i++) {
-      particles.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        radius: Math.random() * 2 + 1,
-        vx: (Math.random() - 0.5) * 0.5,
-        vy: (Math.random() - 0.5) * 0.5,
-        opacity: Math.random() * 0.5 + 0.2
-      });
-    }
-
-    const drawOrb = (centerX: number, centerY: number, radius: number, time: number) => {
-      const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius);
-      gradient.addColorStop(0, `rgba(148, 163, 184, ${0.3 + Math.sin(time * 0.5) * 0.1})`);
-      gradient.addColorStop(0.5, `rgba(100, 116, 139, ${0.2 + Math.sin(time * 0.5) * 0.05})`);
-      gradient.addColorStop(1, 'rgba(71, 85, 105, 0)');
-
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Inner glow
-      const innerGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, radius * 0.6);
-      innerGradient.addColorStop(0, `rgba(203, 213, 225, ${0.1 + Math.sin(time * 0.8) * 0.05})`);
-      innerGradient.addColorStop(1, 'rgba(148, 163, 184, 0)');
-      
-      ctx.fillStyle = innerGradient;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius * 0.6, 0, Math.PI * 2);
-      ctx.fill();
-    };
-
-    const animate = () => {
-      time += 0.01;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw main orb
-      const centerX = canvas.width / 2 + Math.sin(time * 0.5) * 50;
-      const centerY = canvas.height / 2 + Math.cos(time * 0.3) * 30;
-      const baseRadius = Math.min(canvas.width, canvas.height) * 0.25;
-      const radius = baseRadius + Math.sin(time * 2) * 20;
-      
-      drawOrb(centerX, centerY, radius, time);
-
-      // Draw and update particles
-      particles.forEach((p) => {
-        p.x += p.vx;
-        p.y += p.vy;
-
-        if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
-        if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
-
-        ctx.fillStyle = `rgba(148, 163, 184, ${p.opacity})`;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Connect nearby particles
-        particles.forEach((p2) => {
-          const dx = p.x - p2.x;
-          const dy = p.y - p2.y;
-          const distance = Math.sqrt(dx * dx + dy * dy);
-
-          if (distance < 100) {
-            ctx.strokeStyle = `rgba(148, 163, 184, ${0.1 * (1 - distance / 100)})`;
-            ctx.lineWidth = 0.5;
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(p2.x, p2.y);
-            ctx.stroke();
-          }
-        });
-      });
-
-      animationFrameId = requestAnimationFrame(animate);
-    };
-
-    animate();
-
-    return () => {
-      cancelAnimationFrame(animationFrameId);
-      window.removeEventListener('resize', resize);
-    };
-  }, []);
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
-      {/* Canvas Background */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 opacity-40"
-      />
+      {/* 3D Background */}
+      <div className="absolute inset-0 opacity-30">
+        <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
+          <ambientLight intensity={0.5} />
+          <directionalLight position={[10, 10, 5]} intensity={1} />
+          <AnimatedSphere />
+          <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.5} />
+        </Canvas>
+      </div>
 
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-900/50 to-gray-900/90"></div>
@@ -201,7 +125,7 @@ const WelcomePage = () => {
             transition={{ delay: 0.6, duration: 0.8 }}
             className="text-2xl md:text-4xl text-gray-300 mb-8"
           >
-            I&apos;m Monty Mhango
+            I'm Monty Mhango
           </motion.h2>
 
           <motion.p
